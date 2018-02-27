@@ -3,7 +3,6 @@
 
 from django.shortcuts import render
 from django.http import HttpResponse
-from django.template import RequestContext
 
 from wms_client.models import WMSResource
 from wms_client.app_settings import *
@@ -22,7 +21,7 @@ def index(request):
     return render(
         request,
         'wms_client/index.html',
-        context_instance=RequestContext(request, {'wms_set': wms_set}))
+        {'wms_set': wms_set})
 
 
 def map(request, slug):

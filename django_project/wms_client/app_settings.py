@@ -16,6 +16,6 @@ default_leaflet_tiles = (
 )
 LEAFLET_TILES = getattr(settings, 'LEAFLET_TILES', default_leaflet_tiles)
 
-settings.TEMPLATE_CONTEXT_PROCESSORS += (
-    'django.core.context_processors.media',
+settings.TEMPLATES[0]['OPTIONS']['context_processors'] += (
+    'django.template.context_processors.media',
 )

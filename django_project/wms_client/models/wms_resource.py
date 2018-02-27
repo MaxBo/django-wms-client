@@ -164,7 +164,7 @@ class WMSResource(models.Model):
             # If there is an error, use the value from user.
             pass
         if not self.slug:
-            self.slug = slugify(unicode(self.name))
+            self.slug = slugify(str(self.name))
 
         # Populate preview
         # noinspection PyBroadException
@@ -286,7 +286,14 @@ class WMSResource(models.Model):
             except Exception as e:
                 logger.info('Failed to use retrieve_map_direct, %s' % e)
 
-        image_temp = NamedTemporaryFile(delete=True)
+        # NamedTemporaryFile form django.core.files.temp
+        # has different parameters on windows and linux
+        # only on linux, delete=True has to be passed
+        if os.name == 'nt':
+            image_temp = NamedTemporaryFile()
+        else:
+            image_temp = NamedTemporaryFile(delete=True)
+
         image_temp.write(image.read())
         image_temp.flush()
 
