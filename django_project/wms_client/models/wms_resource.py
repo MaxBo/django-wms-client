@@ -11,7 +11,9 @@ from django.contrib.gis.db import models
 from django.conf.global_settings import MEDIA_ROOT
 from django.utils.text import slugify
 import os
-from owslib.wms import WebMapService, ServiceException, CapabilitiesError
+from owslib.wms import WebMapService
+from owslib.util import ServiceException
+from owslib.map.wms111 import CapabilitiesError
 
 
 class WMSResource(models.Model):
@@ -58,7 +60,7 @@ class WMSResource(models.Model):
         blank=True
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
@@ -71,7 +73,7 @@ class WMSResource(models.Model):
         except (ServiceException, CapabilitiesError):
             # If there is an error, use the value from user.
             pass
-        self.slug = slugify(unicode(self.name))
+        self.slug = slugify(str(self.name))
         if not self.layers:
             self.layers = self.name
         super(WMSResource, self).save(*args, **kwargs)

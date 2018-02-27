@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-wms-client',
-    version='0.1.1',
+    version='0.1.2',
     author='Tim Sutton',
     author_email='tim@kartoza.com',
     packages=find_packages(),
@@ -22,12 +22,12 @@ setup(
     description=(
         'An app to let you include browsable OGC WMS '
         'maps on your django web site.'),
-    long_description=open('README.md').read(),
+    long_description=open('../README.md').read(),
     install_requires=[
-        "Django==1.7",
-        "django-leaflet==0.14.1",
-        "psycopg2==2.5.4",
-        "factory-boy==2.4.1",
+        "Django>=1.7",
+        "django-leaflet>=0.14.1",
+        "psycopg2>=2.5.4",
+        "factory-boy>=2.4.1",
     ],
     test_suite='wms_client.run_tests.run',
 )
