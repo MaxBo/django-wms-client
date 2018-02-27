@@ -1,6 +1,7 @@
-
 factory_boy
 django
 django-leaflet
 psycopg2
 owslib
+django-pipeline
+Pillow

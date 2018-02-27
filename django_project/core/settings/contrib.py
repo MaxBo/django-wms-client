@@ -3,7 +3,7 @@ from .base import *  # noqa
 
 # Extra installed apps
 INSTALLED_APPS += (
-    'raven.contrib.django.raven_compat',  # enable Raven plugin
+    # 'raven.contrib.django.raven_compat',  # enable Raven plugin
     'pipeline',
 )
 
@@ -16,7 +16,8 @@ STATICFILES_STORAGE = 'pipeline.storage.PipelineCachedStorage'
 TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.core.context_processors.request',
-    'django.contrib.messages.context_processors.messages'
+    'django.contrib.messages.context_processors.messages',
+    'django.core.context_processors.media',
 )
 
 LEAFLET_CONFIG = {
