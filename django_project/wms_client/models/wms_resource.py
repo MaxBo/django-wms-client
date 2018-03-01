@@ -1,23 +1,16 @@
 # coding=utf-8
 """Model class for WMS Resource"""
-__author__ = 'ismailsunni'
-__project_name = 'django-wms-client'
-__filename = 'wms_resource.py'
-__date__ = '11/11/14'
-__copyright__ = 'imajimatika@gmail.com'
-__doc__ = ''
-
-
 import os
 import random
 import urllib
 import imghdr
 from datetime import datetime
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import Polygon
 from django.conf.global_settings import MEDIA_ROOT
 from django.utils.text import slugify
 
-import os
+
 from owslib.wms import WebMapService
 from owslib.util import ServiceException
 from owslib.map.wms111 import CapabilitiesError
@@ -25,7 +18,6 @@ from owslib.map.wms111 import CapabilitiesError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.core.files import File
 from django.core.files.temp import NamedTemporaryFile
-
 
 
 import logging
@@ -61,15 +53,6 @@ class WMSResource(models.Model):
         max_length=100
     )
 
-    layers = models.TextField(
-        help_text=(
-            'The layers to be included in the map. Separate with commas, '
-            'no spaces between the commas. If left blank the top of '
-            'the layer list tree will be used by default.'),
-        blank=True,
-        null=False,
-    )
-
     description = models.TextField(
         help_text=(
             'Description for the map. If left blank, the WMS abstract text '
@@ -85,6 +68,7 @@ class WMSResource(models.Model):
 
     zoom = models.IntegerField(
         help_text='Default zoom level (1-19) for this map.',
+        null=True,
         blank=True,
         validators=[
             MaxValueValidator(19),
@@ -143,8 +127,12 @@ class WMSResource(models.Model):
         null=True
     )
 
-    username = models.TextField(null=True, blank=True)
-    password = models.TextField(null=True, blank=True)
+    username = models.TextField(null=True, blank=True, max_length=70)
+    password = models.TextField(null=True, blank=True, max_length=70)
+
+    @property
+    def layers(self):
+        return ','.join((l.name for l in self.wmslayer_set.iterator()))
 
     def center_south(self):
         return sum([self.north, self.south]) / 2
@@ -157,6 +145,14 @@ class WMSResource(models.Model):
 
     def save(self, *args, **kwargs):
         """Overloaded save method."""
+
+        # build primary key from name
+        if not self.slug:
+            self.slug = slugify(str(self.name))
+
+        # save to get the primary key filled
+        super(WMSResource, self).save(*args, **kwargs)
+
         try:
             self.populate_wms_resource()
         # except ValueError:
@@ -166,8 +162,6 @@ class WMSResource(models.Model):
         except (ServiceException, CapabilitiesError):
             # If there is an error, use the value from user.
             pass
-        if not self.slug:
-            self.slug = slugify(str(self.name))
 
         # Populate preview
         # noinspection PyBroadException
@@ -177,6 +171,8 @@ class WMSResource(models.Model):
         except Exception as e:
             logger.info('Failed to populate preview, %s' % e)
 
+        # save again
+        force_insert = kwargs.pop('force_insert', None)
         super(WMSResource, self).save(*args, **kwargs)
 
     def populate_wms_resource(self):
@@ -189,20 +185,32 @@ class WMSResource(models.Model):
         if not self.description:
             self.description = wms.identification.abstract or ''
 
-        # If empty, set to all layers available
-        if not self.layers:
-            self.layers = ','.join(wms.contents.keys())
-
-        if self.layers:
+        if wms.contents:
             north = []
             east = []
             south = []
             west = []
 
-            layers = self.layers.split(',')
-            for layer in layers:
+            for layername in wms.contents.keys():
+                layer = wms.contents[layername]
+                wmslayer = WMSLayer.objects.get_or_create(wmsresource=self,
+                                                          name=layer.name)[0]
+                wmslayer.title = layer.title
+                wmslayer.abstract = layer.abstract
+                wmslayer.bbox = Polygon.from_bbox(layer.boundingBoxWGS84)
+                wmslayer.save()
+                layerstyles = getattr(layer, 'styles', {})
+                for stylename, styledict in layerstyles.items():
+                    style = LayerStyle.objects.get_or_create(
+                        wmslayer=wmslayer,
+                        name=stylename or '')[0]
+                    style.title = styledict.get('title', '')
+                    style.legend_uri = styledict.get('legend', '')
+                    style.save()
+
                 try:
-                    bounding_box_wgs84 = wms.contents[layer].boundingBoxWGS84
+                    bounding_box_wgs84 = wms.contents[layername].\
+                        boundingBoxWGS84
                 except KeyError:
                     continue
 
@@ -259,7 +267,7 @@ class WMSResource(models.Model):
         # noinspection PyBroadException
         try:
             layers = self.layers.split(',')
-        except:
+        except AttributeError:
             layers = None
         # Get random layer if not specified
         if not layers:
@@ -332,9 +340,15 @@ class WMSResource(models.Model):
 
         return full_uri
 
-    @staticmethod
-    def retrieve_map_owslib(
-            uri, bbox, srs, size, image_format, styles, layers, wms=None):
+    def retrieve_map_owslib(self,
+                            uri,
+                            bbox,
+                            srs,
+                            size,
+                            image_format,
+                            styles,
+                            layers,
+                            wms=None):
         """Retrieve image of a map from wms server using owslib."""
 
         if not wms:
@@ -367,3 +381,20 @@ class WMSResource(models.Model):
         image = urllib.urlopen(full_uri)
 
         return image
+
+
+class WMSLayer(models.Model):
+    """A single WMS layer in a WMS Resource"""
+    wmsresource = models.ForeignKey(WMSResource, on_delete=models.CASCADE)
+    name = models.TextField()
+    title = models.TextField(null=True, blank=True)
+    abstract = models.TextField(null=True, blank=True)
+    bbox = models.PolygonField(null=True)
+
+
+class LayerStyle(models.Model):
+    """Layer Style"""
+    wmslayer = models.ForeignKey(WMSLayer, on_delete=models.CASCADE)
+    name = models.TextField()
+    title = models.TextField(null=True, blank=True)
+    legend_uri = models.TextField(null=True, blank=True)

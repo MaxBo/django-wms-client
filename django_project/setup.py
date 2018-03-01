@@ -10,9 +10,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-wms-client',
-    version='0.1.2',
-    author='Tim Sutton',
-    author_email='tim@kartoza.com',
+    version='0.2.1',
+    author='Tim Sutton, Max Bohnet',
+    author_email='tim@kartoza.com, bohnet@ggr-planung.org',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
