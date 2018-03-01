@@ -143,6 +143,9 @@ class WMSResource(models.Model):
         null=True
     )
 
+    username = models.TextField(null=True, blank=True)
+    password = models.TextField(null=True, blank=True)
+
     def center_south(self):
         return sum([self.north, self.south]) / 2
 
@@ -178,11 +181,13 @@ class WMSResource(models.Model):
 
     def populate_wms_resource(self):
         """Populate the model fields based on a uri."""
-        wms = WebMapService(self.uri)
+        wms = WebMapService(self.uri,
+                            username=self.username,
+                            password=self.password)
         if not self.name:
             self.name = wms.identification.title
         if not self.description:
-            self.description = wms.identification.abstract
+            self.description = wms.identification.abstract or ''
 
         # If empty, set to all layers available
         if not self.layers:
@@ -246,7 +251,9 @@ class WMSResource(models.Model):
 
     def populate_preview(self):
         """Return thumbnail for preview image."""
-        wms = WebMapService(self.uri)
+        wms = WebMapService(self.uri,
+                            username=self.username,
+                            password=self.password)
 
         # Get layers
         # noinspection PyBroadException
@@ -332,7 +339,9 @@ class WMSResource(models.Model):
 
         if not wms:
             # Get the wms object
-            wms = WebMapService(uri)
+            wms = WebMapService(uri,
+                                username=self.username,
+                                password=self.password)
 
         # This is important to make sure they have the same length
         if len(styles) != len(layers):
