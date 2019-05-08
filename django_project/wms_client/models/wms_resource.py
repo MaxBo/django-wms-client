@@ -46,11 +46,10 @@ class WMSResource(models.Model):
         max_length=100
     )
 
-    uri = models.CharField(
+    uri = models.TextField(
         help_text='URI for the WMS resource',
         null=False,
         blank=False,
-        max_length=100
     )
 
     description = models.TextField(
